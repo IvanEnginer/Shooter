@@ -28,10 +28,13 @@ public class EnemyController : MonoBehaviour
 
     private Player _player;
 
-    public void Init(Player player)
+    public void Init(string key, Player player)
     {
+        _character.Init(key);
+
         _player = player;
         _character.SetSpeed(player.speed);
+        _character.SetMaxHP(player.maxHp);
         player.OnChange += OnChange;
     }
 
@@ -74,6 +77,13 @@ public class EnemyController : MonoBehaviour
         {
             switch (dataChange.Field)
             {
+                case "loss":
+                    MultiplaerManager.Instance._lossCounter.SetEnemyLoss((byte)dataChange.Value);
+                    break;
+                case "currentHp":
+                    if ((sbyte)dataChange.Value > (sbyte)dataChange.PreviousValue)
+                        _character.RestoreHP((sbyte)dataChange.Value);
+                    break;
                 case "pX":
                     position.x = (float)dataChange.Value;
                     break;

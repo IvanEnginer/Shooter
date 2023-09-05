@@ -2,6 +2,15 @@ import { Room, Client } from "colyseus";
 import { Schema, type, MapSchema } from "@colyseus/schema";
 
 export class Player extends Schema {
+    @type("uint8")
+    loss = 0;
+
+    @type("int8")
+    maxHp = 0;
+
+    @type("int8")
+    currentHp = 0;
+
     @type("number")
     speed = 0;
 
@@ -38,6 +47,8 @@ export class State extends Schema {
 
     createPlayer(sessionId: string, data: any) {
         const player = new Player();
+        player.maxHp = data.hp;
+        player.currentHp = data.hp;
         player.speed = data.speed;
 
         this.players.set(sessionId, player);
@@ -62,7 +73,16 @@ export class State extends Schema {
 }
 
 export class StateHandlerRoom extends Room<State> {
-    maxClients = 4;
+    maxClients = 2;
+
+    pointsTeamA = [[1, 2], 
+                   [10, 3]]; 
+
+
+    pointsTeamB = [[30, 2], 
+                   [30, 3]]; 
+
+
 
     onCreate (options) {
         console.log("StateHandlerRoom created!", options);
@@ -81,6 +101,42 @@ export class StateHandlerRoom extends Room<State> {
         this.onMessage("sitState", (client, data) => {
             this.broadcast("SitState", data, {except: client})
         });
+
+        this.onMessage("damage", (client, data) => {
+            const    clientID =  data.id;
+
+            const player = this.state.players.get(clientID);
+
+            let hp = player.currentHp - data.value;
+
+            if(hp > 0){
+                player.currentHp = hp;
+                return;
+            }
+            player.currentHp -= data.value;
+
+            player.loss++;
+            player.currentHp = player.maxHp;
+
+            for(var i = 0; i < this.clients.length; i++){
+                if(this.clients[i].id != clientID) continue;
+
+                const x = Math.floor(Math.random() * 50) -25;
+                const z = Math.floor(Math.random() * 50) -25;
+
+                // if(clientID < 1 ){
+                //     const x =  this.pointsTeamA[0]
+                // }
+
+                // if(clientID == 1 ){
+                //     const x =  this.pointsTeamA[1]
+                // }
+
+
+                const massage = JSON.stringify({x,z});
+                client.send("Restart", x);
+            }
+        });
     }
 
     onAuth(client, options, req) {
@@ -88,6 +144,8 @@ export class StateHandlerRoom extends Room<State> {
     }
 
     onJoin (client: Client, data: any) {
+       if(this.clients.length > 1)this.lock;
+       
         client.send("hello", "world");
         this.state.createPlayer(client.sessionId, data);
     }

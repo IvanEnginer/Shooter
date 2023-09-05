@@ -1,7 +1,12 @@
+using Colyseus.Schema;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.TextCore.Text;
 
 public class PlayerCharacter : Character
 {
+    [SerializeField] private Health _health;
     [SerializeField] private Rigidbody _rigidbody;
     [SerializeField] private float _speed = 2f;
     [SerializeField] private Transform _head;
@@ -35,6 +40,9 @@ public class PlayerCharacter : Character
         camera.parent = _cameraPoint;
         camera.localPosition = Vector3.zero;
         camera.localRotation = Quaternion.identity;
+
+        _health.SetMax(maxHealth);
+        _health.SetCurrent(maxHealth);
     }
 
     public void SetInput(float h, float v, float rotateY)
@@ -127,5 +135,24 @@ public class PlayerCharacter : Character
 
         _jumpForse = Time.time;
         _rigidbody.AddForce(0, _jumpForse, 0, ForceMode.VelocityChange);
+    }
+
+    internal void OnChange(List<DataChange> changes)
+    {
+        foreach (var dataChange in changes)
+        {
+            switch (dataChange.Field)
+            {
+                case "loss":
+                    MultiplaerManager.Instance._lossCounter.SetPlayerLoss((byte)dataChange.Value);
+                    break;
+                case "currentHp":
+                    _health.SetCurrent((sbyte)dataChange.Value);
+                    break;
+                default:
+                    Debug.Log("Not processing cange field " + dataChange.Value);
+                    break;
+            }
+        }
     }
 }
